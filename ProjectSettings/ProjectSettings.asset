@@ -4,7 +4,7 @@
 PlayerSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 28
-  productGUID: 62226d1c5bb7e424b94e01bc0468654b
+  productGUID: c434ecfef7dcf452fb8ce40c2ee0e4ea
   AndroidProfiler: 0
   AndroidFilterTouchesWhenObscured: 0
   AndroidEnableSustainedPerformanceMode: 0
@@ -13,7 +13,7 @@ PlayerSettings:
   useOnDemandResources: 0
   accelerometerFrequency: 60
   companyName: DefaultCompany
-  productName: YazLab
+  productName: deneme
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -844,14 +844,14 @@ PlayerSettings:
   editorAssembliesCompatibilityLevel: 1
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: YazLab
+  metroPackageName: deneme
   metroPackageVersion: 
   metroCertificatePath: 
   metroCertificatePassword: 
   metroCertificateSubject: 
   metroCertificateIssuer: 
   metroCertificateNotAfter: 0000000000000000
-  metroApplicationDescription: YazLab
+  metroApplicationDescription: deneme
   wsaImages: {}
   metroTileShortName: 
   metroTileShowName: 0
@@ -920,12 +920,12 @@ PlayerSettings:
   qnxGraphicConfPath: 
   apiCompatibilityLevel: 6
   captureStartupLogs: {}
-  activeInputHandler: 1
+  activeInputHandler: 2
   windowsGamepadBackendHint: 0
-  cloudProjectId: 0b3c5fdb-ff81-4636-b77a-90f806a6262c
+  cloudProjectId: fcde4d10-a7c3-4dac-ae7f-0ebe12b857d0
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: YazLab 2025-11-06_23-52-38
+  projectName: deneme
   organizationId: hnhtftvtd5
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0

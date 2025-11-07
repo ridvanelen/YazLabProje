@@ -1,0 +1,67 @@
+KOU Yazılım Geliştirme Laboratuvarı I - Yapay Zeka Destekli TPS Oyunu
+Proje Raporu
+
+Bu proje, Kocaeli Üniversitesi Teknoloji Fakültesi Bilişim Sistemleri Mühendisliği 2025-2026 Güz Dönemi Yazılım Geliştirme Laboratuvarı – I dersi kapsamında, Unity oyun motoru kullanılarak gerçekleştirilmiştir.
+
+Ekip Üyeleri:
+
+Kerem Emre Gümüştaş (231037084)
+
+Rıdvan Elen (231307046)
+
+Faruk Öztürk (231307050)
+
+1. Oyun Senaryosu ve Tema
+Proje, "low-poly" ve "mekanik odaklı" geliştirme isterlerine uygun olarak, temel oyun mekaniklerinin test edildiği bir "sandbox" (test alanı) arenası olarak tasarlanmıştır.
+
+Oyunda herhangi bir hazır 3D varlık (asset) kullanılmamış; oyuncu, düşman ve çevre, Unity'nin temel primitif objeleri (Capsule, Sphere, Plane) kullanılarak oluşturulmuştur. Bu sayede tüm geliştirme odağı, proje isterlerinde belirtilen temel mekaniklerin kodlanmasına verilmiştir.
+
+Oyuncu: Sahnede "Capsule" objesi ile temsil edilmektedir.
+
+Düşman: "EnemyAI" objesi ile temsil edilmektedir.
+
+Amaç: Oyuncu, yapay zeka düşmanı alt etmeye çalışırken, düşman da FSM (Finite State Machine) mantığına göre oyuncuya tepki verir.
+
+2. Sistem Mimarisi ve Oyun Mekanikleri
+Proje, 4 ana mekanik üzerine kurulmuştur. Tüm bu mekanikler C# script'leri ile sıfırdan kodlanmıştır.
+
+1. TPS Kontrol Mekanikleri (Movement & Aim)
+Oyuncu kontrolü, iki ana script tarafından yönetilmektedir:
+
+MovementStateManager.cs: CharacterController bileşeni kullanarak oyuncunun WASD tuşları ile hareket etmesini ve yer çekimi uygulamasını yönetir.
+
+AimStateManager.cs: Unity'nin yeni Input System'i ve Cinemachine kullanarak mouse hareketini algılar. Mouse'un yatay (X) hareketi oyuncunun gövdesini (transform.eulerAngles), dikey (Y) hareketi ise kameranın baktığı hedefi (camFollowPos) döndürür.
+
+2. Yapay Zeka - Finite State Machine (FSM)
+Düşman davranışı, EnemyAI.cs script'i içinde kodlanan bir Durum Makinesi (FSM) ile yönetilir. Bu, proje isterlerindeki 4 temel durumu da içerir:
+
+Patrol (Devriye): Düşman, oyuncuyu görmediğinde haritada (walkPointRange içinde) rastgele hedeflere yürür.
+
+Chase (Kovalama): Oyuncu, sightRange (görüş) menziline girdiğinde, düşman devriyeyi bırakır ve oyuncuyu takip etmeye başlar.
+
+Attack (Saldırı): Oyuncu, attackRange (saldırı) menziline girdiğinde, düşman takibi bırakır, durur, oyuncuya döner ve projectile (mermi) fırlatır.
+
+Idle (Boşta Durma): Kod içinde Idle durumu tanımlanmış, ancak daha dinamik bir yapı için Patrol durumuna yönlendirilmiştir.
+
+Bu durumlar arasındaki geçişler, Update() metodu içinde Physics.CheckSphere kullanılarak oyuncunun menzile girip girmediğinin sürekli kontrol edilmesiyle sağlanır.
+
+3. Yol Bulma (Pathfinding)
+Düşmanın Chase ve Patrol durumlarında haritada hareket edebilmesi için Unity'nin AI Navigation sistemi kullanılmıştır.
+
+Zemin (Plane) objesi için bir NavMesh "bake" (pişirme) işlemi yapılmıştır.
+
+EnemyAI objesine bir NavMeshAgent bileşeni eklenmiştir.
+
+ChasePlayer() fonksiyonu agent.SetDestination(player.position) komutu ile düşmanın oyuncuya giden en kısa yolu bulmasını sağlar.
+
+4. Savaş Mekaniği (Shooting & Health)
+Oyuncu ve düşman arasında tam bir savaş döngüsü kodlanmıştır:
+
+Oyuncu Ateşi (PlayerShoot.cs): Oyuncu sol tıkladığında (Input.GetButtonDown("Fire1")), kameranın baktığı yöne doğru bir Physics.Raycast (ışın) atılır.
+
+Hasar Verme: Bu ışın EnemyAI script'ine sahip bir objeye çarparsa, o script'in içindeki TakeDamage(damage) fonksiyonunu çağırır.
+
+Düşman Canı (EnemyAI.cs): Düşmanın bir health (can) değişkeni vardır. TakeDamage fonksiyonu bu canı azaltır. Can 0'a ulaştığında Destroy(gameObject) komutu ile düşman yok olur.
+
+Düşman Ateşi (EnemyAI.cs): Düşman AttackPlayer durumundayken, Instantiate komutu ile bir projectile (mermi prefabı) oluşturur ve oyuncuya doğru fırlatır.
+github.com/ridvanelen

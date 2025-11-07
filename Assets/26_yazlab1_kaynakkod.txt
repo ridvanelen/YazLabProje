@@ -1,0 +1,305 @@
+using UnityEngine;
+using Unity.Cinemachine;
+using UnityEngine.InputSystem;
+
+public class AimStateManager : MonoBehaviour
+{
+    [SerializeField] private Transform camFollowPos;
+    [SerializeField] private float mouseSensitivity = 1f;
+
+    private float xRotation;
+    private float yRotation;
+    private PlayerInput playerInput;
+    private InputAction lookAction;
+
+    private void Start()
+    {
+        // Set up input
+        playerInput = GetComponent<PlayerInput>();
+        if (playerInput != null)
+        {
+            lookAction = playerInput.actions["Look"];
+            lookAction?.Enable();
+        }
+
+        // Lock cursor
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
+
+    private void OnDisable()
+    {
+        lookAction?.Disable();
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+
+    private void Update()
+    {
+        if (lookAction != null)
+        {
+            // Get input from new Input System
+            Vector2 lookDelta = lookAction.ReadValue<Vector2>();
+
+            // Apply sensitivity
+            xRotation += lookDelta.x * mouseSensitivity;
+            yRotation -= lookDelta.y * mouseSensitivity;
+
+            // Clamp vertical rotation
+            yRotation = Mathf.Clamp(yRotation, -80f, 80f);
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (camFollowPos != null)
+        {
+            // Apply rotations
+            camFollowPos.localEulerAngles = new Vector3(yRotation, camFollowPos.localEulerAngles.y, camFollowPos.localEulerAngles.z);
+            transform.eulerAngles = new Vector3(transform.eulerAngles.x, xRotation, transform.eulerAngles.z);
+        }
+    }
+}
+
+
+
+
+using UnityEngine;
+using UnityEngine.AI;
+
+public class EnemyAI : MonoBehaviour
+{
+    public NavMeshAgent agent;
+    public Transform player;
+    public LayerMask whatIsGround, whatIsPlayer;
+
+    [Header("Can")]
+    public float health = 100f;
+
+    public enum AIState { Idle, Patrol, Chase, Attack }
+    public AIState currentState;
+
+    [Header("Patrol (Devriye)")]
+    public Vector3 walkPoint;
+    bool walkPointSet;
+    public float walkPointRange;
+
+    [Header("Attack (Saldırı)")]
+    public float timeBetweenAttacks;
+    bool alreadyAttacked;
+    public GameObject projectile;
+
+    [Header("Menziller")]
+    public float sightRange, attackRange;
+    public bool playerInSightRange, playerInAttackRange;
+
+    private void Awake()
+    {
+        player = GameObject.Find("Capsule").transform;
+        agent = GetComponent<NavMeshAgent>();
+
+        currentState = AIState.Patrol;
+    }
+
+    private void Update()
+    {
+        playerInSightRange = Physics.CheckSphere(transform.position, sightRange, whatIsPlayer);
+        playerInAttackRange = Physics.CheckSphere(transform.position, attackRange, whatIsPlayer);
+
+        if (!playerInSightRange && !playerInAttackRange) currentState = AIState.Patrol;
+        if (playerInSightRange && !playerInAttackRange) currentState = AIState.Chase;
+        if (playerInSightRange && playerInAttackRange) currentState = AIState.Attack;
+
+        switch (currentState)
+        {
+            case AIState.Idle:
+                currentState = AIState.Patrol;
+                break;
+            case AIState.Patrol:
+                Patroling();
+                break;
+            case AIState.Chase:
+                ChasePlayer();
+                break;
+            case AIState.Attack:
+                AttackPlayer();
+                break;
+        }
+    }
+
+    private void Patroling()
+    {
+        if (!walkPointSet) SearchWalkPoint();
+        if (walkPointSet) agent.SetDestination(walkPoint);
+        if (Vector3.Distance(transform.position, walkPoint) < 1f) walkPointSet = false;
+    }
+
+    private void SearchWalkPoint()
+    {
+        float randomZ = Random.Range(-walkPointRange, walkPointRange);
+        float randomX = Random.Range(-walkPointRange, walkPointRange);
+        walkPoint = new Vector3(transform.position.x + randomX, transform.position.y, transform.position.z + randomZ);
+        if (Physics.Raycast(walkPoint, -transform.up, 2f, whatIsGround)) walkPointSet = true;
+    }
+
+    private void ChasePlayer()
+    {
+        agent.SetDestination(player.position);
+    }
+
+    private void AttackPlayer()
+    {
+        agent.SetDestination(transform.position);
+        transform.LookAt(player);
+
+        if (!alreadyAttacked)
+        {
+            if (projectile != null)
+            {
+                Rigidbody rb = Instantiate(projectile, transform.position, Quaternion.identity).GetComponent<Rigidbody>();
+                rb.AddForce(transform.forward * 32f, ForceMode.Impulse);
+                Destroy(rb.gameObject, 3f);
+            }
+
+            alreadyAttacked = true;
+            Invoke(nameof(ResetAttack), timeBetweenAttacks);
+        }
+    }
+
+    private void ResetAttack()
+    {
+        alreadyAttacked = false;
+    }
+
+    public void TakeDamage(float amount)
+    {
+        health -= amount;
+        if (health <= 0f)
+        {
+            Destroy(gameObject);
+        }
+    }
+}
+
+
+using UnityEngine;
+
+public class MovementStateManager : MonoBehaviour
+{
+    [SerializeField] private float moveSpeed = 3f;
+    [SerializeField] private float groundYOffset = 0.1f;
+    [SerializeField] private LayerMask groundMask;
+    [SerializeField] private float gravity = -9.81f;
+
+    private CharacterController controller;
+    private Vector3 velocity;
+    private Vector3 movementDirection;
+    private Vector3 spherePosition;
+
+    private void Awake()
+    {
+        // Cache the CharacterController component for performance
+        controller = GetComponent<CharacterController>();
+        if (controller == null)
+        {
+            Debug.LogError("CharacterController component is missing!");
+            enabled = false;
+            return;
+        }
+    }
+
+    private void Update()
+    {
+        // Calculate movement direction
+        GetDirection();
+
+        // Apply gravity
+        ApplyGravity();
+
+        // Combine movement and gravity, then move the character
+        Vector3 finalMove = movementDirection * moveSpeed + velocity;
+        controller.Move(finalMove * Time.deltaTime);
+    }
+
+    private void GetDirection()
+    {
+        float horizontalInput = Input.GetAxis("Horizontal");
+        float verticalInput = Input.GetAxis("Vertical");
+
+        movementDirection = transform.forward * verticalInput + transform.right * horizontalInput;
+    }
+
+    private bool IsGrounded()
+    {
+        spherePosition = new Vector3(transform.position.x, transform.position.y - groundYOffset, transform.position.z);
+        return Physics.CheckSphere(spherePosition, controller.radius - 0.05f, groundMask);
+    }
+
+    private void ApplyGravity()
+    {
+        if (IsGrounded())
+        {
+            // Reset gravity when grounded
+            if (velocity.y < 0)
+            {
+                velocity.y = -2f; // Slight negative value to ensure contact with the ground
+            }
+        }
+        else
+        {
+            // Apply gravity over time when not grounded
+            velocity.y += gravity * Time.deltaTime;
+        }
+    }
+
+    private void OnDrawGizmos()
+    {
+        // Visualize the ground check sphere in the Scene view
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(
+            new Vector3(transform.position.x, transform.position.y - groundYOffset, transform.position.z),
+            controller != null ? controller.radius - 0.05f : 0.5f
+        );
+    }
+}
+
+
+using UnityEngine;
+
+public class PlayerShoot : MonoBehaviour
+{
+    [Header("Ateş Etme Ayarları")]
+    public Camera playerCam; 
+    public float damage = 25f;
+    public float range = 100f;
+
+    void Update()
+    {
+
+        if (Input.GetButtonDown("Fire1"))
+        {
+            Shoot();
+        }
+    }
+
+    
+    void Shoot()
+    {
+        RaycastHit hit;
+        
+
+        if (Physics.Raycast(playerCam.transform.position, playerCam.transform.forward, out hit, range))
+        {
+
+            Debug.Log("Çarptı: " + hit.transform.name);
+
+            EnemyAI enemy = hit.transform.GetComponent<EnemyAI>();
+            
+            if (enemy != null)
+            {
+                enemy.TakeDamage(damage);
+                Debug.Log("DÜŞMANA HASAR VERİLDİ!");
+            }
+        }
+    }
+}
